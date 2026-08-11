@@ -1,0 +1,22 @@
+{
+  "name": "buildcmp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Compare two compile_commands.json files and browse project coverage in a server-rendered dashboard.",
+  "type": "module",
+  "scripts": {
+    "extract": "node src/extract.js",
+    "serve": "node src/serve.js",
+    "sample:extract": "node src/extract.js fixtures/sample-project fixtures/sample-data/compile_commands.one.json fixtures/sample-data/compile_commands.two.json fixtures/sample-data/comparison.json",
+    "sample:serve": "node src/serve.js fixtures/sample-project fixtures/sample-data/comparison.json 4173"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dockview": "^7.0.4",
+    "jquery": "^4.0.0",
+    "jstree": "^3.3.17",
+    "monaco-editor": "^0.56.0"
+  }
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "directory": "fixtures/sample-project",
+    "command": "c++ -Iinclude -c src/main.cpp",
+    "file": "src/main.cpp"
+  },
+  {
+    "directory": "fixtures/sample-project",
+    "command": "c++ -Iinclude -c src/util.cpp",
+    "file": "src/util.cpp"
+  }
+]
