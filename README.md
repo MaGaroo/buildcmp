@@ -31,20 +31,30 @@ The extractor currently writes JSON like this:
 
 ```json
 {
-  "version": 1,
+  "version": 3,
   "generatedAt": "2026-08-05T13:00:00.000Z",
   "files": [
     {
       "path": "src/main.cpp",
       "inFirst": true,
       "inSecond": false,
-      "status": "first-only"
+      "status": "first-only",
+      "lineRanges": {
+        "first": [[1, 8], [12, 16]],
+        "second": []
+      },
+      "lineCounts": {
+        "both": 0,
+        "firstOnly": 13,
+        "secondOnly": 0
+      }
     }
   ]
 }
 ```
 
 The dashboard intentionally reads actual file contents from the project root at request time, so the intermediate file only stores the comparison data we need.
+For line-level extraction, the extractor preprocesses each translation unit with its original compile flags and stores compressed active line ranges instead of individual line numbers.
 
 ## UI behavior
 

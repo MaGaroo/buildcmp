@@ -116,10 +116,19 @@ class ExplorerPanel {
         <span class="config-pill config-pill-2">2</span>
         <span class="legend-text">second compile database</span>
       </div>
+      <label class="explorer-toggle">
+        <input type="checkbox" id="line-summary-toggle">
+        <span>Show line stats</span>
+      </label>
       <div class="explorer-tree" id="explorer-tree"></div>
     `;
 
     const treeElement = this.element.querySelector("#explorer-tree");
+    const summaryToggle = this.element.querySelector("#line-summary-toggle");
+
+    summaryToggle.addEventListener("change", () => {
+      this.element.classList.toggle("show-line-summary", summaryToggle.checked);
+    });
 
     window.jQuery(treeElement)
       .jstree({
@@ -177,6 +186,7 @@ class EditorPanel {
     this.monaco = monacoInstance;
     this.model = null;
     this.editor = null;
+    this.decorationsCollection = null;
     this.path = null;
     this.element = document.createElement("div");
     this.element.className = "editor-panel";
@@ -231,6 +241,8 @@ class EditorPanel {
         language: payload.language,
         readOnly: true,
         minimap: { enabled: false },
+        glyphMargin: false,
+        lineDecorationsWidth: 38,
         scrollBeyondLastLine: false,
         automaticLayout: true,
         fontSize: 13,
@@ -238,6 +250,9 @@ class EditorPanel {
         theme: "vs-dark"
       });
       this.model = this.editor.getModel();
+      this.decorationsCollection = this.editor.createDecorationsCollection(
+        buildLineDecorations(this.monaco, payload.lineRanges)
+      );
       return;
     }
 
@@ -247,6 +262,7 @@ class EditorPanel {
 
     this.model = this.monaco.editor.createModel(payload.content, payload.language);
     this.editor.setModel(this.model);
+    this.decorationsCollection?.set(buildLineDecorations(this.monaco, payload.lineRanges));
   }
 
   renderLoading(filePath, status) {
@@ -280,6 +296,9 @@ class EditorPanel {
   }
 
   dispose() {
+    if (this.decorationsCollection) {
+      this.decorationsCollection.clear();
+    }
     if (this.model) {
       this.model.dispose();
     }
@@ -287,6 +306,73 @@ class EditorPanel {
       this.editor.dispose();
     }
   }
+}
+
+function buildLineDecorations(monaco, lineRanges) {
+  const maskByLine = new Map();
+
+  applyLineMask(maskByLine, lineRanges?.first ?? [], 1);
+  applyLineMask(maskByLine, lineRanges?.second ?? [], 2);
+
+  const sortedLines = [...maskByLine.keys()].sort((left, right) => left - right);
+  const decorations = [];
+
+  if (sortedLines.length === 0) {
+    return decorations;
+  }
+
+  let start = sortedLines[0];
+  let end = sortedLines[0];
+  let currentMask = maskByLine.get(sortedLines[0]);
+
+  for (let index = 1; index < sortedLines.length; index += 1) {
+    const line = sortedLines[index];
+    const mask = maskByLine.get(line);
+
+    if (line === end + 1 && mask === currentMask) {
+      end = line;
+      continue;
+    }
+
+    decorations.push(makeLineDecoration(monaco, start, end, currentMask));
+    start = line;
+    end = line;
+    currentMask = mask;
+  }
+
+  decorations.push(makeLineDecoration(monaco, start, end, currentMask));
+  return decorations;
+}
+
+function applyLineMask(maskByLine, ranges, bit) {
+  for (const [start, end] of ranges) {
+    for (let line = start; line <= end; line += 1) {
+      maskByLine.set(line, (maskByLine.get(line) ?? 0) | bit);
+    }
+  }
+}
+
+function makeLineDecoration(monaco, start, end, mask) {
+  return {
+    range: new monaco.Range(start, 1, end, 1),
+    options: {
+      isWholeLine: true,
+      linesDecorationsClassName: lineBadgeClass(mask)
+    }
+  };
+}
+
+function lineBadgeClass(mask) {
+  if (mask === 3) {
+    return "line-badge-both";
+  }
+  if (mask === 1) {
+    return "line-badge-1";
+  }
+  if (mask === 2) {
+    return "line-badge-2";
+  }
+  return "";
 }
 
 function statusToLabel(status) {

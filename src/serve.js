@@ -92,6 +92,8 @@ function main() {
         status: record.status,
         inFirst: record.inFirst,
         inSecond: record.inSecond,
+        lineRanges: record.lineRanges ?? { first: [], second: [] },
+        lineCounts: record.lineCounts ?? { both: 0, firstOnly: 0, secondOnly: 0 },
         isText,
         size: buffer.length,
         language: detectLanguage(resolvedPath),
@@ -230,14 +232,15 @@ function walkTree(node, parentId, nodes, fileMap) {
     nodes.push({
       id: directoryId,
       parent: parentId,
-      text: renderTreeNodeLabel(directoryName, aggregate, "folder"),
+      text: renderTreeNodeLabel(directoryName, aggregate, "folder", aggregate.lineCounts),
       type: "folder",
       state: { opened: parentId === "#" },
       data: {
         kind: "directory",
         path: directory.relativePath,
         inFirst: aggregate.inFirst,
-        inSecond: aggregate.inSecond
+        inSecond: aggregate.inSecond,
+        lineCounts: aggregate.lineCounts
       },
       a_attr: {
         class: "tree-anchor",
@@ -254,7 +257,7 @@ function walkTree(node, parentId, nodes, fileMap) {
     nodes.push({
       id: `file:${file.path}`,
       parent: parentId,
-      text: renderTreeNodeLabel(file.name, record, "file"),
+      text: renderTreeNodeLabel(file.name, record, "file", record.lineCounts),
       type: "file",
       data: {
         kind: "file",
@@ -270,9 +273,10 @@ function walkTree(node, parentId, nodes, fileMap) {
   }
 }
 
-function renderTreeNodeLabel(label, record, kind) {
+function renderTreeNodeLabel(label, record, kind, lineCounts = null) {
   const badges = [];
   const iconClass = kind === "folder" ? "tree-inline-icon-folder" : "tree-inline-icon-file";
+  const summary = renderLineSummary(lineCounts);
 
   if (record?.inFirst) {
     badges.push('<span class="config-pill config-pill-1">1</span>');
@@ -283,15 +287,28 @@ function renderTreeNodeLabel(label, record, kind) {
   }
 
   if (badges.length === 0) {
-    return `<span class="tree-label-wrap"><span class="tree-inline-icon ${iconClass}" aria-hidden="true"></span><span class="tree-label">${escapeHtml(label)}</span></span>`;
+    return `<span class="tree-label-wrap"><span class="tree-inline-icon ${iconClass}" aria-hidden="true"></span><span class="tree-label">${escapeHtml(label)}</span>${summary}</span>`;
   }
 
-  return `<span class="tree-label-wrap"><span class="tree-inline-icon ${iconClass}" aria-hidden="true"></span><span class="tree-label">${escapeHtml(label)}</span><span class="tree-badges">${badges.join("")}</span></span>`;
+  return `<span class="tree-label-wrap"><span class="tree-inline-icon ${iconClass}" aria-hidden="true"></span><span class="tree-label">${escapeHtml(label)}</span><span class="tree-badges">${badges.join("")}</span>${summary}</span>`;
+}
+
+function renderLineSummary(lineCounts) {
+  if (!lineCounts) {
+    return "";
+  }
+
+  return `<span class="tree-line-summary" aria-hidden="true">b:${lineCounts.both} 1:${lineCounts.firstOnly} 2:${lineCounts.secondOnly}</span>`;
 }
 
 function summarizeDirectory(node, fileMap) {
   let inFirst = false;
   let inSecond = false;
+  const lineCounts = {
+    both: 0,
+    firstOnly: 0,
+    secondOnly: 0
+  };
 
   for (const file of node.files) {
     const record = fileMap.get(file.path);
@@ -301,15 +318,21 @@ function summarizeDirectory(node, fileMap) {
 
     inFirst ||= Boolean(record.inFirst);
     inSecond ||= Boolean(record.inSecond);
+    lineCounts.both += record.lineCounts?.both ?? 0;
+    lineCounts.firstOnly += record.lineCounts?.firstOnly ?? 0;
+    lineCounts.secondOnly += record.lineCounts?.secondOnly ?? 0;
   }
 
   for (const child of node.directories.values()) {
     const childSummary = summarizeDirectory(child, fileMap);
     inFirst ||= childSummary.inFirst;
     inSecond ||= childSummary.inSecond;
+    lineCounts.both += childSummary.lineCounts.both;
+    lineCounts.firstOnly += childSummary.lineCounts.firstOnly;
+    lineCounts.secondOnly += childSummary.lineCounts.secondOnly;
   }
 
-  return { inFirst, inSecond };
+  return { inFirst, inSecond, lineCounts };
 }
 
 function guessContentType(filePath) {

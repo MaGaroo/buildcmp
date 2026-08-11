@@ -117,6 +117,23 @@ export function resolveCompileCommandEntry(projectRoot, entry) {
   return normalizeProjectPath(projectRoot, absoluteFile);
 }
 
+export function resolveCompileCommandAbsolutePath(projectRoot, entry) {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+
+  if (typeof entry.file !== "string" || entry.file.length === 0) {
+    return null;
+  }
+
+  const baseDir =
+    typeof entry.directory === "string" && entry.directory.length > 0
+      ? entry.directory
+      : projectRoot;
+
+  return path.resolve(baseDir, entry.file);
+}
+
 export function classifyFile(inFirst, inSecond) {
   if (inFirst && inSecond) {
     return "both";

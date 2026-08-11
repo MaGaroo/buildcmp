@@ -1,7 +1,7 @@
 [
   {
     "directory": "fixtures/sample-project",
-    "command": "c++ -Iinclude -c src/util.cpp",
+    "command": "c++ -Iinclude -DSECOND_DB=1 -c src/util.cpp",
     "file": "src/util.cpp"
   }
 ]
